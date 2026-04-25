@@ -44,10 +44,11 @@ DEVELOPER_DIR=~/Desktop/Xcode.app/Contents/Developer \
 
 ### サービス層
 
-- **`SeedService`** — 起動のたびに `seedIfNeeded()` を呼ぶ。Tag が 0 件なら初回セットアップ（タグ15件投入）。問題は `UserDefaults` の `seededQuestionCount` キーで「何問インポート済みか」を管理し、バンドルの問題数が増えていれば差分だけ追加する（回答履歴は削除不要）。旧バージョンからのアップデート時は現在のDB問題数を起点にして重複を防ぐ。
-- **`AnalysisService`** — 全 AnswerLog からタグ別苦手度を計算。`weakScore = 誤答率×0.7 + 時間超過率×0.3`。難易度別基準時間：易=30秒, 普=60秒, 難=90秒。**grade-as-ceiling**: `grade <= selectedGrade` のログを統合して計算（タグスキルは学年横断）。
-- **`QuestionSelector`** — セッション問題選択ロジック。苦手タグ問題60% / 通常40%。解答済み問題は除外。**grade-as-ceiling**: `grade <= selectedGrade` の問題プールを使用（4年生→grade 4のみ、5年生→grade 4+5、6年生→全問）。`selectMistakes()` は最後の解答が不正解だった問題を返す（まちがい練習用）。
-- **`RubyAnnotatorService`** — CFStringTokenizer を使って日本語テキストの漢字に `{漢字|よみ}` 形式のルビを自動付与。既にルビが含まれる場合はスキップ。末尾ひらがなをトークンから分離して漢字部分だけにルビを付与（例: "帰って" → `{帰|かえ}って`）。`needsRuby(base:forGrade:)` で小学1〜6年配当漢字辞書（`kanjiGrade`、1026字）を参照し、習得済み漢字かを判定。
+- **`SeedService`** — 起動のたびに `seedIfNeeded()` を呼ぶ。Tag が 0 件なら初回セットアップ（タグ15件投入）。問題は `UserDefaults` の `seededQuestionCount` キーで「何問インポート済みか」を管理し、バンドルの問題数が増えていれば差分だけ追加する（回答履歴は削除不要）。
+- **`AnalysisService`** — 全 AnswerLog からタグ別苦手度を計算。`weakScore = 誤答率×0.7 + 時間超過率×0.3`。**grade-as-ceiling**: `grade <= selectedGrade` のログを統合して計算。`latestLogPerQuestion(_:)` で問題ごとの最新ログを取得する共通ユーティリティを提供。
+- **`QuestionSelector`** — セッション問題選択ロジック。苦手タグ問題60% / 通常40%。解答済み問題は除外。`selectMistakes()` は最後の解答が不正解だった問題を返す。
+- **`RubyAnnotatorService`** — CFStringTokenizer を使って日本語テキストの漢字に `{漢字|よみ}` 形式のルビを自動付与。`needsRuby(base:forGrade:)` で小学配当漢字辞書（1026字）を参照し習得済み漢字を判定。
+- **`Constants.swift`** — `AppConstants` enum に数値定数を集約（基準時間・苦手スコア重み・セッションサイズ等）。
 
 ### アプリ状態
 
@@ -62,18 +63,17 @@ DEVELOPER_DIR=~/Desktop/Xcode.app/Contents/Developer \
 
 **クイズフロー**（`QuizSessionView`内の`SessionPhase`ステートマシン）:
 ```
-.quiz（初期N問、フィードバックなし）
-  → 全問正解: dismiss()
-  → 不正解あり: .mistakeReview（「X問まちがえたよ」画面）
+.quiz（初期N問）
+  → 全問正解: .complete（完了画面）→ dismiss()
+  → 不正解あり: .mistakeReview（「X問まちがえたよ」画面＋ChaseViewアニメーション）
       → 「といなおす」: .retry（不正解問題のみ、また間違えたら末尾追加して繰り返す）
-          → 全問正解: dismiss()
+          → 全問正解: .complete（完了画面）→ dismiss()
 ```
-- フィードバックは**一切表示しない**。答えたら即次の問題へ。
+- 各問題を答えた後、**正解/不正解バナーを表示**（正解の選択肢は明かさない）。画面どこでもタップで次の問題へ。
 - 不正解問題は `.retry` フェーズで末尾 append して全問正解するまでループ。
-- `MistakeReviewView`（`QuizSessionView.swift` 内 private struct）に「やめる」ボタンはなく、ナビバーの「終了」が唯一の離脱手段。🐱猫が🐭ネズミを追いかけるアニメーション（`ChaseView`）付き。
 - `startTime` は問題ごとに `submitAnswer()` 内でリセットされる（`.now`）ため `timeSec` は1問あたりの所要時間。
 
-**ルビ表示**: `RubyAnnotatorService.annotate()` でテキストに `{漢字|かんじ}` 形式のマークアップを付与し、`RubyTextView`（`UITextView` ラッパー）で CoreText のルビ注釈として描画する。`RubyTextView(text:grade:)` の `grade` に `appState.selectedGrade` を渡すと、その学年以下で習う漢字のルビを非表示にする（`grade: 0` = 全ルビ表示）。`ReadingView` は `grade` を渡しているが、`AnswerView` 内の `RubyTextView` は `grade` を渡していない（全ルビ表示）。
+**ルビ表示**: `RubyAnnotatorService.annotate()` でテキストに `{漢字|かんじ}` 形式のマークアップを付与し、`RubyTextView`（`UITextView` ラッパー）で CoreText のルビ注釈として描画する。`RubyTextView(text:grade:)` の `grade` に `appState.selectedGrade` を渡すと、その学年以下で習う漢字のルビを非表示にする（`grade: 0` = 全ルビ表示）。`AnswerView` は `grade` パラメータを受け取り `RubyTextView` に渡す。
 
 ### scripts/
 
@@ -141,5 +141,6 @@ JSON スキーマ：
 - `.foregroundStyle(Color.accentColor)` を使う（`.foregroundStyle(.accentColor)` はコンパイルエラーになる場合がある）。
 - `AnswerLog` を insert したら即 `try? modelContext.save()` でディスクに書き込む。
 - `ModelContainer` のスキーマに新しい `@Model` を追加したら `docoachApp.swift` の `Schema([...])` にも追記する。
-- `ContentView.swift` / `Item.swift` / `ResultView.swift` は使用していない（前者2つは Xcode テンプレート残骸、`ResultView` はフロー変更で不要になった）。
 - テストは Swift Testing フレームワーク（`@Test`, `#expect`）を使う。XCTest ではない。`docoachTests` は現在プレースホルダーのみ。
+- 数値定数（基準時間・比率等）は `AppConstants`（`Services/Constants.swift`）に追加する。
+- 問題ごとの最新ログが必要な場合は `AnalysisService.latestLogPerQuestion(_:)` を使う（重複実装しない）。
