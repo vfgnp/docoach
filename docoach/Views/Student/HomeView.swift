@@ -55,8 +55,19 @@ struct HomeView: View {
                 }
                 .padding()
             }
-            .navigationTitle("どこーち")
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "book.fill")
+                            .foregroundStyle(Color.accentColor)
+                            .font(.title3)
+                        (Text("Do").italic().bold().foregroundStyle(Color.accentColor)
+                         + Text("コーチ").bold())
+                            .font(.title)
+                            .fontDesign(.rounded)
+                    }
+                }
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         showGradePicker = true
@@ -134,9 +145,10 @@ struct HomeView: View {
             )
             quizSession = QuizSession(questions: questions)
         } label: {
-            Text("もんだいをはじめる")
+            Text("学習ゴー！")
                 .font(.title2.bold())
                 .frame(maxWidth: .infinity)
+                .multilineTextAlignment(.center)
                 .padding()
                 .foregroundStyle(.white)
                 .background(
@@ -161,9 +173,9 @@ struct HomeView: View {
             quizSession = QuizSession(questions: questions)
         } label: {
             HStack {
-                Text("まちがいをれんしゅうする")
-                    .font(.title2.bold())
                 Spacer()
+                Text("やり直しゴー！")
+                    .font(.title2.bold())
                 if hasMistakes {
                     Text("\(mistakePool.count)問")
                         .font(.headline)
@@ -171,6 +183,7 @@ struct HomeView: View {
                         .padding(.vertical, 4)
                         .background(.white.opacity(0.25), in: Capsule())
                 }
+                Spacer()
             }
             .frame(maxWidth: .infinity)
             .padding()

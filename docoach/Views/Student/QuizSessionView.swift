@@ -5,11 +5,13 @@ private enum SessionPhase {
     case quiz
     case mistakeReview
     case retry
+    case complete
 }
 
 struct QuizSessionView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
+    @Environment(AppState.self) private var appState
 
     let initialQuestions: [Question]
 
@@ -36,7 +38,7 @@ struct QuizSessionView: View {
                 switch phase {
                 case .quiz, .retry:
                     if let q = current {
-                        AnswerView(question: q) { chosen in
+                        AnswerView(question: q, grade: appState.selectedGrade) { chosen in
                             submitAnswer(question: q, chosen: chosen)
                         }
                         .id("\(phase)-\(currentIndex)")
@@ -49,6 +51,9 @@ struct QuizSessionView: View {
                         wrongCount: wrongQuestions.count,
                         onRetry: startRetry
                     )
+
+                case .complete:
+                    CompleteView(onDismiss: { dismiss() })
                 }
             }
             .navigationBarTitleDisplayMode(.inline)
@@ -103,9 +108,12 @@ struct QuizSessionView: View {
             }
 
         case .retry:
-            dismiss()
+            phase = .complete
 
         case .mistakeReview:
+            break
+
+        case .complete:
             break
         }
     }
@@ -115,6 +123,50 @@ struct QuizSessionView: View {
         currentIndex = 0
         startTime = .now
         phase = .retry
+    }
+}
+
+private struct CompleteView: View {
+    let onDismiss: () -> Void
+    @State private var scale: CGFloat = 0.5
+    @State private var opacity: Double = 0
+
+    var body: some View {
+        VStack(spacing: 32) {
+            Spacer()
+
+            Text("🎉")
+                .font(.system(size: 96))
+                .scaleEffect(scale)
+                .opacity(opacity)
+
+            VStack(spacing: 12) {
+                Text("ぜんぶできたよ！")
+                    .font(.largeTitle.bold())
+                Text("よくがんばったね！")
+                    .font(.title3)
+                    .foregroundStyle(.secondary)
+            }
+            .opacity(opacity)
+
+            Spacer()
+
+            Button(action: onDismiss) {
+                Text("おわる")
+                    .font(.title3.bold())
+                    .frame(maxWidth: 300)
+                    .padding()
+                    .foregroundStyle(.white)
+                    .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 16))
+            }
+            .padding(.bottom, 48)
+        }
+        .onAppear {
+            withAnimation(.spring(duration: 0.6, bounce: 0.4)) {
+                scale = 1.0
+                opacity = 1.0
+            }
+        }
     }
 }
 

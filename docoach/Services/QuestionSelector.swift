@@ -8,7 +8,7 @@ struct QuestionSelector {
         grade: Int,
         weakTags: [Tag],
         recentLogs: [AnswerLog],
-        count: Int = 5
+        count: Int = AppConstants.QuestionSelector.sessionSize
     ) -> [Question] {
         let gradePool = allQuestions.filter { $0.grade <= grade }
 
@@ -24,7 +24,7 @@ struct QuestionSelector {
             !q.tags.contains { weakTagIDs.contains($0.id) }
         }
 
-        let weakCount = Int((Double(count) * 0.6).rounded())
+        let weakCount = Int((Double(count) * AppConstants.QuestionSelector.weakTagRatio).rounded())
         let normalCount = count - weakCount
 
         var selected: [Question] = []
@@ -46,15 +46,10 @@ struct QuestionSelector {
         from allQuestions: [Question],
         grade: Int,
         allLogs: [AnswerLog],
-        count: Int = 5
+        count: Int = AppConstants.QuestionSelector.sessionSize
     ) -> [Question] {
         let gradeLogs = allLogs.filter { $0.grade <= grade }
-        var latestLog: [UUID: AnswerLog] = [:]
-        for log in gradeLogs {
-            let qid = log.question.id
-            if let existing = latestLog[qid], existing.answeredAt >= log.answeredAt { continue }
-            latestLog[qid] = log
-        }
+        let latestLog = AnalysisService.latestLogPerQuestion(gradeLogs)
         let mistakeIDs = Set(latestLog.values.filter { !$0.isCorrect }.map { $0.question.id })
         let pool = allQuestions.filter { $0.grade <= grade && mistakeIDs.contains($0.id) }.shuffled()
         return Array(pool.prefix(count))

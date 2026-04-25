@@ -12,9 +12,6 @@ struct TagScore: Identifiable {
 
 struct AnalysisService {
 
-    /// 難易度別の基準秒数
-    static let baselineSec: [Int: Double] = [1: 30, 2: 60, 3: 90]
-
     /// タグ別の苦手度スコアを計算して返す（weakScore 降順）
     static func computeTagScores(logs: [AnswerLog], grade: Int) -> [TagScore] {
         let gradeLogs = logs.filter { $0.grade <= grade }
@@ -38,11 +35,12 @@ struct AnalysisService {
             let avgTime = tagLogs.map { Double($0.timeSec) }.reduce(0, +) / total
 
             let medianDiff = tagLogs.map { $0.question.difficulty }.sorted().middle ?? 2
-            let baseline = baselineSec[medianDiff] ?? 60.0
+            let baseline = AppConstants.Analysis.baselineSec[medianDiff] ?? 60.0
             let exceeds = Double(tagLogs.filter { Double($0.timeSec) > baseline }.count)
             let timeExceedRate = exceeds / total
 
-            let weakScore = (errorRate * 0.7) + (timeExceedRate * 0.3)
+            let weakScore = (errorRate * AppConstants.Analysis.weakScoreWeight)
+                          + (timeExceedRate * AppConstants.Analysis.slowScoreWeight)
 
             return TagScore(
                 tag: entry.tag,
@@ -58,6 +56,17 @@ struct AnalysisService {
     /// 苦手タグ上位 N 件を返す
     static func weakTags(from scores: [TagScore], limit: Int = 3) -> [Tag] {
         scores.prefix(limit).map(\.tag)
+    }
+
+    /// 問題ごとの最新ログを返す
+    static func latestLogPerQuestion(_ logs: [AnswerLog]) -> [UUID: AnswerLog] {
+        var result: [UUID: AnswerLog] = [:]
+        for log in logs {
+            let qid = log.question.id
+            if let existing = result[qid], existing.answeredAt >= log.answeredAt { continue }
+            result[qid] = log
+        }
+        return result
     }
 }
 

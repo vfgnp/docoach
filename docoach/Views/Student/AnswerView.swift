@@ -3,11 +3,18 @@ import UIKit
 
 struct AnswerView: View {
     let question: Question
+    let grade: Int
     let onSubmit: (Int) -> Void
 
     @State private var selectedIndex: Int? = nil
+    @State private var submittedIndex: Int? = nil
 
     private let letters = ["ア", "イ", "ウ", "エ"]
+
+    private var isCorrect: Bool? {
+        guard let s = submittedIndex else { return nil }
+        return s == question.correctIndex
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -52,7 +59,7 @@ struct AnswerView: View {
                     }
 
                     // 文章
-                    RubyTextView(text: question.text)
+                    RubyTextView(text: question.text, grade: grade)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(24)
                         .background(Color(.systemGray6))
@@ -63,6 +70,7 @@ struct AnswerView: View {
                     VStack(alignment: .leading, spacing: 24) {
                         RubyTextView(
                             text: question.questionText,
+                            grade: grade,
                             uiFont: {
                                 let base = UIFont.preferredFont(forTextStyle: .title3)
                                 if let desc = base.fontDescriptor.withSymbolicTraits(.traitBold) {
@@ -80,7 +88,8 @@ struct AnswerView: View {
                                 ChoiceButton(
                                     label: question.choices[idx],
                                     letter: letters[idx],
-                                    isSelected: selectedIndex == idx
+                                    state: choiceState(for: idx),
+                                    isDisabled: submittedIndex != nil
                                 ) {
                                     selectedIndex = idx
                                 }
@@ -88,34 +97,95 @@ struct AnswerView: View {
                         }
                         .padding(.horizontal)
                         .padding(.bottom, 8)
+
                     }
                 }
             }
 
             Divider()
 
-            Button {
-                if let chosen = selectedIndex {
-                    onSubmit(chosen)
+            // 結果バナー（回答後のみ）
+            if let correct = isCorrect {
+                HStack(spacing: 12) {
+                    Text(correct ? "正解" : "不正解")
+                        .font(.title2.bold())
+                    Spacer()
+                    Text("タップして次へ")
+                        .font(.caption)
+                        .opacity(0.8)
                 }
-            } label: {
-                Text("こたえる")
-                    .font(.title3.bold())
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .foregroundStyle(.white)
+                .foregroundStyle(.white)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 12)
+                .background(correct ? Color.green : Color.red)
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-            .background(selectedIndex == nil ? Color(.systemGray4) : Color.accentColor)
-            .disabled(selectedIndex == nil)
+
+            if submittedIndex == nil {
+                Button {
+                    if let chosen = selectedIndex {
+                        withAnimation(.easeOut(duration: 0.25)) {
+                            submittedIndex = chosen
+                        }
+                    }
+                } label: {
+                    Text("こたえる")
+                        .font(.title3.bold())
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .foregroundStyle(.white)
+                }
+                .background(selectedIndex == nil ? Color(.systemGray4) : Color.accentColor)
+                .disabled(selectedIndex == nil)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if let s = submittedIndex {
+                onSubmit(s)
+            }
         }
     }
+
+    private func choiceState(for idx: Int) -> ChoiceState {
+        guard let submitted = submittedIndex else {
+            return selectedIndex == idx ? .selected : .normal
+        }
+        let correct = submitted == question.correctIndex
+        if correct && idx == submitted { return .correct }
+        if !correct && idx == submitted { return .wrong }
+        return .normal
+    }
+}
+
+private enum ChoiceState {
+    case normal, selected, correct, wrong
 }
 
 private struct ChoiceButton: View {
     let label: String
     let letter: String
-    let isSelected: Bool
+    let state: ChoiceState
+    let isDisabled: Bool
     let action: () -> Void
+
+    private var bgColor: Color {
+        switch state {
+        case .normal:    return Color(.systemGray6)
+        case .selected:  return Color.accentColor.opacity(0.12)
+        case .correct:   return Color.green.opacity(0.15)
+        case .wrong:     return Color.red.opacity(0.12)
+        }
+    }
+
+    private var borderColor: Color {
+        switch state {
+        case .normal:   return .clear
+        case .selected: return Color.accentColor
+        case .correct:  return .green
+        case .wrong:    return .red
+        }
+    }
 
     var body: some View {
         Button(action: action) {
@@ -127,17 +197,23 @@ private struct ChoiceButton: View {
                     .font(.body)
                     .multilineTextAlignment(.leading)
                 Spacer()
+                if state == .correct {
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                } else if state == .wrong {
+                    Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
+                }
             }
             .padding()
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? Color.accentColor.opacity(0.12) : Color(.systemGray6))
+                    .fill(bgColor)
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
+                            .stroke(borderColor, lineWidth: 2)
                     )
             )
         }
         .buttonStyle(.plain)
+        .disabled(isDisabled)
     }
 }

@@ -6,7 +6,7 @@ struct DashboardView: View {
     @Query private var allLogs: [AnswerLog]
 
     private var gradeLogs: [AnswerLog] {
-        allLogs.filter { $0.grade == appState.selectedGrade }
+        allLogs.filter { $0.grade <= appState.selectedGrade }
     }
 
     private var tagScores: [TagScore] {
@@ -14,12 +14,7 @@ struct DashboardView: View {
     }
 
     private var mistakeCount: Int {
-        var latestLog: [UUID: AnswerLog] = [:]
-        for log in gradeLogs {
-            let qid = log.question.id
-            if let existing = latestLog[qid], existing.answeredAt >= log.answeredAt { continue }
-            latestLog[qid] = log
-        }
+        let latestLog = AnalysisService.latestLogPerQuestion(gradeLogs)
         return latestLog.values.filter { !$0.isCorrect }.count
     }
 
