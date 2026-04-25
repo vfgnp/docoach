@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Xcode
+*.xcuserstate
+xcuserdata/
+*.xcscheme
+!*.xcscheme.xcschememanagement
+DerivedData/
+build/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Claude Code
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+.python-version
+
+# Secrets
+*.env
+Secrets.swift
+APIKeys.swift
