@@ -35,7 +35,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		35915E3A2F41A692001BBF12 /* Exceptions for "docoach" folder in "docoach" target */ = {
+		356D36922FB0584500B8B776 /* Exceptions for "docoach" folder in "docoach" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -45,10 +45,10 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		35915E162F41A68E001BBF12 /* docoach */ = {
+		356D36912FB0584500B8B776 /* docoach */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				35915E3A2F41A692001BBF12 /* Exceptions for "docoach" folder in "docoach" target */,
+				356D36922FB0584500B8B776 /* Exceptions for "docoach" folder in "docoach" target */,
 			);
 			path = docoach;
 			sourceTree = "<group>";
@@ -94,7 +94,7 @@
 			isa = PBXGroup;
 			children = (
 				3513D6B22F4518BB008C5B0C /* readme.md */,
-				35915E162F41A68E001BBF12 /* docoach */,
+				356D36912FB0584500B8B776 /* docoach */,
 				35915E2B2F41A692001BBF12 /* docoachTests */,
 				35915E352F41A692001BBF12 /* docoachUITests */,
 				35915E152F41A68E001BBF12 /* Products */,
@@ -127,7 +127,7 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				35915E162F41A68E001BBF12 /* docoach */,
+				356D36912FB0584500B8B776 /* docoach */,
 			);
 			name = docoach;
 			packageProductDependencies = (
@@ -295,10 +295,11 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = docoach/docoach.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"docoach/Preview Content\"";
-				DEVELOPMENT_TEAM = 7N355XPFBB;
+				DEVELOPMENT_TEAM = "";
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = docoach/Info.plist;
@@ -314,6 +315,7 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = NYN.docoach;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -326,10 +328,13 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = docoach/docoach.entitlements;
-				CODE_SIGN_STYLE = Automatic;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Distribution";
+				CODE_SIGN_STYLE = Manual;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"docoach/Preview Content\"";
-				DEVELOPMENT_TEAM = 7N355XPFBB;
+				DEVELOPMENT_TEAM = "";
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = 7N355XPFBB;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = docoach/Info.plist;
@@ -345,6 +350,8 @@
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = NYN.docoach;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				"PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]" = "docoach AppStore";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
