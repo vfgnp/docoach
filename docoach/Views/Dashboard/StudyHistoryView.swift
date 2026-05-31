@@ -44,7 +44,7 @@ struct StudyHistoryView: View {
                             Text(rec.date, format: .dateTime.month().day())
                             + Text("（\(weekdayName(rec.date))）")
                             Spacer()
-                            Text("\(rec.count)問（\(Int(Double(rec.correctCount) / Double(rec.count) * 100))%正解）")
+                            Text("\(rec.correctCount)問正解（\(Int(Double(rec.correctCount) / Double(rec.count) * 100))%）")
                                 .bold()
                         }
                         .font(.body)

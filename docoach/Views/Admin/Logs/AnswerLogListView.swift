@@ -27,9 +27,9 @@ struct AnswerLogListView: View {
                     Text(correctRate).bold()
                 }
                 HStack {
-                    Text("総解答数").foregroundStyle(.secondary)
+                    Text("正解数").foregroundStyle(.secondary)
                     Spacer()
-                    Text("\(filtered.count) 問").bold()
+                    Text("\(filtered.filter(\.isCorrect).count) 問").bold()
                 }
             } header: {
                 Text("サマリー")

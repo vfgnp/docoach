@@ -37,8 +37,8 @@ struct DashboardView: View {
     private var summaryCards: some View {
         HStack(spacing: 16) {
             SummaryCard(
-                title: "総解答数",
-                value: "\(gradeLogs.count)",
+                title: "正解数",
+                value: "\(gradeLogs.filter(\.isCorrect).count)",
                 unit: "問",
                 color: .blue
             )
