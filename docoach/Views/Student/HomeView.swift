@@ -4,11 +4,14 @@ import SwiftData
 struct HomeView: View {
     @Environment(AppState.self) private var appState
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Query private var allLogs: [AnswerLog]
     @Query private var allQuestions: [Question]
 
     @State private var showGradePicker = false
     @State private var quizSession: QuizSession? = nil
+    // 「今日」の基準日。アプリ復帰のたびに更新し、日跨ぎでの再計算を促す。
+    @State private var todayStart = Calendar.current.startOfDay(for: .now)
 
     private var tagScores: [TagScore] {
         AnalysisService.computeTagScores(logs: allLogs, grade: appState.selectedGrade)
@@ -27,7 +30,8 @@ struct HomeView: View {
 
     private var todayAnsweredCount: Int {
         let cal = Calendar.current
-        return allLogs.filter { cal.isDateInToday($0.answeredAt) }.count
+        // todayStart を基準にすることで @State 依存を作り、日跨ぎ復帰時に再評価される。
+        return allLogs.filter { cal.isDate($0.answeredAt, inSameDayAs: todayStart) }.count
     }
 
     private var isLimitReached: Bool {
@@ -84,6 +88,12 @@ struct HomeView: View {
             }
             .fullScreenCover(item: $quizSession) { session in
                 QuizSessionView(questions: session.questions)
+            }
+            .onChange(of: scenePhase) { _, phase in
+                // バックグラウンド復帰時に当日基準を更新（日跨ぎで出題上限判定をリセット）
+                if phase == .active {
+                    todayStart = Calendar.current.startOfDay(for: .now)
+                }
             }
         }
     }

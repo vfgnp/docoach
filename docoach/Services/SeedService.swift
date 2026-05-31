@@ -3,6 +3,10 @@ import SwiftData
 
 struct SeedService {
 
+    /// 「何問インポート済みか」を保持する UserDefaults キー。
+    /// スキーマ非互換で SQLite を破棄するときは docoachApp 側でこのキーも消し、再シードを促す。
+    static let seededCountKey = "seededQuestionCount"
+
     /// 起動のたびに呼び出す。初回はタグ＋全問題を投入。
     /// 以降はバンドルに増えた問題だけを差分追加する（履歴は削除しない）。
     static func seedIfNeeded(context: ModelContext) throws {
@@ -31,22 +35,21 @@ struct SeedService {
         }
 
         // 何問インポート済みかを UserDefaults で管理
-        let key = "seededQuestionCount"
-        var seededCount = UserDefaults.standard.integer(forKey: key)
+        var seededCount = UserDefaults.standard.integer(forKey: seededCountKey)
 
         // 移行処理: キーが未設定かつ既存データがある場合（旧バージョンからのアップデート）
         // → 現在のDB問題数を起点にして重複インポートを防ぐ
         if seededCount == 0 && tagCount > 0 {
             let dbCount = try context.fetchCount(FetchDescriptor<Question>())
             seededCount = min(dbCount, bundleQuestions.count)
-            UserDefaults.standard.set(seededCount, forKey: key)
+            UserDefaults.standard.set(seededCount, forKey: seededCountKey)
         }
 
         // 差分だけ追加
         guard bundleQuestions.count > seededCount else { return }
         let newQuestions = Array(bundleQuestions[seededCount...])
         newQuestions.forEach { context.insert($0) }
-        UserDefaults.standard.set(bundleQuestions.count, forKey: key)
+        UserDefaults.standard.set(bundleQuestions.count, forKey: seededCountKey)
         try context.save()
     }
 

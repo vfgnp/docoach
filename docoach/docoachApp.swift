@@ -26,6 +26,8 @@ struct docoachApp: App {
             try? FileManager.default.removeItem(at: storeURL)
             try? FileManager.default.removeItem(at: storeURL.deletingPathExtension().appendingPathExtension("sqlite-shm"))
             try? FileManager.default.removeItem(at: storeURL.deletingPathExtension().appendingPathExtension("sqlite-wal"))
+            // ストアを破棄したらシード進捗もリセットし、再生成後に全問題を再シードさせる
+            UserDefaults.standard.removeObject(forKey: SeedService.seededCountKey)
             do {
                 return try ModelContainer(for: schema, configurations: [modelConfiguration])
             } catch {

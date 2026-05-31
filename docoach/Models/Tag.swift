@@ -8,7 +8,9 @@ final class Tag {
     var name: String
     var priority: Int     // 1 が最重要
     var createdAt: Date
-    var questions: [Question]
+    // Question.tags との双方向 many-to-many。inverse を明示しないと
+    // SwiftData が 2 つの独立した関係として扱い、付与したタグが永続化されない。
+    @Relationship(inverse: \Question.tags) var questions: [Question]
 
     init(
         id: UUID = UUID(),
