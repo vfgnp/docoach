@@ -38,10 +38,26 @@ struct docoachApp: App {
 
     @State private var appState = AppState()
 
+    init() {
+        // バンドルした M PLUS Rounded 1c を CoreText に登録する。
+        // GENERATE_INFOPLIST_FILE = YES のため Info.plist の UIAppFonts 配列は使えない。
+        Kids.registerFonts()
+    }
+
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environment(appState)
+            Group {
+                #if DEBUG
+                if let screen = DebugScreen.fromLaunchArguments {
+                    DebugScreenGallery(screen: screen)
+                } else {
+                    RootView()
+                }
+                #else
+                RootView()
+                #endif
+            }
+            .environment(appState)
         }
         .modelContainer(sharedModelContainer)
     }

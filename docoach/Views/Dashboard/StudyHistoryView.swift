@@ -27,37 +27,48 @@ struct StudyHistoryView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("がくしゅうきろく")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 14) {
+            Text("📅 がくしゅうきろく")
+                .font(Kids.font(18, .black))
+                .foregroundStyle(Kids.textDark)
 
             if records.isEmpty {
-                Text("まだきろくがありません")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .padding()
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                Text("まだきろくがないよ。")
+                    .font(Kids.font(15, .bold))
+                    .foregroundStyle(Kids.textMuted)
             } else {
                 VStack(spacing: 0) {
                     ForEach(records) { rec in
                         HStack {
-                            Text(rec.date, format: .dateTime.month().day())
-                            + Text("（\(weekdayName(rec.date))）")
+                            Text(dateLabel(rec.date))
+                                .font(Kids.font(16, .bold))
+                                .foregroundStyle(Color(hex: 0x6B5E52))
                             Spacer()
-                            Text("\(rec.correctCount)問正解（\(Int(Double(rec.correctCount) / Double(rec.count) * 100))%）")
-                                .bold()
+                            Text("\(rec.correctCount)問せいかい")
+                                .font(Kids.font(16, .black))
+                                .foregroundStyle(Kids.blue)
                         }
-                        .font(.body)
-                        .padding(.vertical, 10)
-                        .padding(.horizontal)
+                        .padding(.vertical, 11)
                         if rec.id != records.last?.id {
-                            Divider().padding(.horizontal)
+                            Rectangle()
+                                .fill(Kids.track)
+                                .frame(height: 1)
                         }
                     }
                 }
-                .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 12))
             }
         }
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .kidsCard(radius: 22, depth: 5)
+    }
+
+    private func dateLabel(_ date: Date) -> String {
+        let cal = Calendar.current
+        let m = cal.component(.month, from: date)
+        let d = cal.component(.day, from: date)
+        return "\(m)月\(d)日（\(weekdayName(date))）"
     }
 
     private func weekdayName(_ date: Date) -> String {

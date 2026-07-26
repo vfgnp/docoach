@@ -17,15 +17,15 @@ struct ProgressTimelineView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("日別 正答率")
-                .font(.headline)
+        VStack(alignment: .leading, spacing: 14) {
+            Text("📈 日べつ せいとう率")
+                .font(Kids.font(18, .black))
+                .foregroundStyle(Kids.textDark)
 
             if dailyPoints.isEmpty {
-                Text("データがまだありません")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 8)
+                Text("データがまだないよ。")
+                    .font(Kids.font(15, .bold))
+                    .foregroundStyle(Kids.textMuted)
             } else {
                 Chart(dailyPoints) { point in
                     LineMark(
@@ -33,14 +33,18 @@ struct ProgressTimelineView: View {
                         y: .value("正答率", point.correctRate)
                     )
                     .interpolationMethod(.catmullRom)
+                    .foregroundStyle(Kids.blue)
+                    .lineStyle(StrokeStyle(lineWidth: 4, lineCap: .round))
                     PointMark(
                         x: .value("日付", point.date),
                         y: .value("正答率", point.correctRate)
                     )
+                    .foregroundStyle(Kids.blue)
+                    .symbolSize(120)
                     .annotation(position: .top) {
                         Text("\(Int(point.correctRate * 100))%")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
+                            .font(Kids.font(12, .black))
+                            .foregroundStyle(Kids.textMuted)
                     }
                 }
                 .chartYScale(domain: 0...1)
@@ -49,16 +53,20 @@ struct ProgressTimelineView: View {
                         AxisValueLabel {
                             if let d = val.as(Double.self) {
                                 Text("\(Int(d * 100))%")
+                                    .font(Kids.font(12, .bold))
+                                    .foregroundStyle(Kids.textMuted)
                             }
                         }
-                        AxisGridLine()
+                        AxisGridLine().foregroundStyle(Kids.track)
                     }
                 }
                 .frame(height: 200)
             }
         }
-        .padding()
-        .background(Color(.systemGray6), in: RoundedRectangle(cornerRadius: 16))
+        .padding(.horizontal, 20)
+        .padding(.vertical, 18)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .kidsCard(radius: 22, depth: 5)
     }
 }
 

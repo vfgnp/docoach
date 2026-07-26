@@ -154,6 +154,78 @@ struct docoachTests {
         #expect(AnalysisService.correctCount(in: logs, on: yesterday) == 1)
     }
 
+    // MARK: - 子供向け画面のサマリー
+
+    /// 連続日数は「正解した日」だけを数え、当日まだ解いていなくても前日までの連続は途切れない。
+    @Test func streakCountsConsecutiveCorrectDays() throws {
+        let ctx = try makeContext()
+        let q = makeQuestion(grade: 5, text: "Q")
+        ctx.insert(q)
+
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: .now)
+        func day(_ offset: Int) -> Date { cal.date(byAdding: .day, value: offset, to: today)! }
+
+        // 今日・昨日・一昨日は正解、3日前は誤答のみ
+        let logs = [
+            AnswerLog(question: q, isCorrect: true, timeSec: 5, answeredAt: day(0)),
+            AnswerLog(question: q, isCorrect: true, timeSec: 5, answeredAt: day(-1)),
+            AnswerLog(question: q, isCorrect: true, timeSec: 5, answeredAt: day(-2)),
+            AnswerLog(question: q, isCorrect: false, timeSec: 5, answeredAt: day(-3)),
+        ]
+        logs.forEach { ctx.insert($0) }
+        try ctx.save()
+
+        #expect(AnalysisService.streak(in: logs, today: today) == 3)
+
+        // 今日ぶんが無くても、昨日までの連続は保たれる
+        let withoutToday = Array(logs.dropFirst())
+        #expect(AnalysisService.streak(in: withoutToday, today: today) == 2)
+
+        // 2日以上あいたら 0
+        let stale = [AnswerLog(question: q, isCorrect: true, timeSec: 5, answeredAt: day(-5))]
+        #expect(AnalysisService.streak(in: stale, today: today) == 0)
+    }
+
+    /// まちがい数は「最新ログが不正解のまま」の問題数。やり直して正解したら減る。
+    @Test func summaryCountsLatestMistakesOnly() throws {
+        let ctx = try makeContext()
+        let a = makeQuestion(grade: 4, text: "A")
+        let b = makeQuestion(grade: 4, text: "B")
+        [a, b].forEach { ctx.insert($0) }
+
+        let base = Date.now
+        let logs = [
+            AnswerLog(question: a, isCorrect: false, timeSec: 5, answeredAt: base),
+            // A はやり直して正解 → まちがいから外れる
+            AnswerLog(question: a, isCorrect: true, timeSec: 5, answeredAt: base.addingTimeInterval(60)),
+            AnswerLog(question: b, isCorrect: false, timeSec: 5, answeredAt: base),
+        ]
+        logs.forEach { ctx.insert($0) }
+        try ctx.save()
+
+        let s = AnalysisService.summary(logs: logs, grade: 4, tagScores: [])
+        #expect(s.correctCount == 1)
+        #expect(s.mistakeCount == 1)
+        #expect(abs(s.accuracy - 1.0 / 3.0) < 0.0001)
+    }
+
+    /// 週の進捗は7日ぶん返り、正解した日だけ done になる。
+    @Test func weekProgressMarksCorrectDays() throws {
+        let ctx = try makeContext()
+        let q = makeQuestion(grade: 4, text: "Q")
+        ctx.insert(q)
+        let today = Calendar.current.startOfDay(for: .now)
+        let logs = [AnswerLog(question: q, isCorrect: true, timeSec: 5, answeredAt: today)]
+        logs.forEach { ctx.insert($0) }
+        try ctx.save()
+
+        let week = AnalysisService.weekProgress(in: logs, today: today)
+        #expect(week.count == 7)
+        #expect(week.filter(\.done).count == 1)
+        #expect(week.contains { $0.date == today && $0.done })
+    }
+
     // MARK: - Helpers
 
     private func makeContext() throws -> ModelContext {
