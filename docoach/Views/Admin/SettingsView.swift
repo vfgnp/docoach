@@ -7,7 +7,7 @@ struct SettingsView: View {
         @Bindable var state = appState
         NavigationStack {
             Form {
-                Section("1日の出題数") {
+                Section {
                     Picker("上限", selection: $state.dailyLimit) {
                         Text("無限").tag(Optional<Int>.none)
                         ForEach(1...5, id: \.self) { n in
@@ -15,6 +15,10 @@ struct SettingsView: View {
                         }
                     }
                     .pickerStyle(.segmented)
+                } header: {
+                    Text("1日の正解数")
+                } footer: {
+                    Text("正解した問題だけを数えます。まちがえた分・やり直した分は数えません。")
                 }
             }
             .navigationTitle("設定")

@@ -28,15 +28,15 @@ struct HomeView: View {
         }
     }
 
-    private var todayAnsweredCount: Int {
-        let cal = Calendar.current
-        // todayStart を基準にすることで @State 依存を作り、日跨ぎ復帰時に再評価される。
-        return allLogs.filter { cal.isDate($0.answeredAt, inSameDayAs: todayStart) }.count
+    /// 今日「正解した」問題数。誤答・やり直しの試行は数えない。
+    /// todayStart を基準にすることで @State 依存を作り、日跨ぎ復帰時に再評価される。
+    private var todayCorrectCount: Int {
+        AnalysisService.correctCount(in: allLogs, on: todayStart)
     }
 
     private var isLimitReached: Bool {
         guard let limit = appState.dailyLimit else { return false }
-        return todayAnsweredCount >= limit
+        return todayCorrectCount >= limit
     }
 
     private var mistakePool: [Question] {
@@ -103,7 +103,7 @@ struct HomeView: View {
             Text(appState.gradeName)
                 .font(.title.bold())
             if unsolvedQuestions.isEmpty && !gradeQuestions.isEmpty {
-                Text("ぜんぶといたよ！まちがいをれんしゅうしよう")
+                Text("ぜんぶといたよ！ここからは ふくしゅうだよ")
                     .font(.subheadline)
                     .foregroundStyle(.orange)
             } else {
@@ -112,7 +112,7 @@ struct HomeView: View {
                     .foregroundStyle(.secondary)
             }
             if let limit = appState.dailyLimit {
-                Text("今日あと \(max(0, limit - todayAnsweredCount)) 問")
+                Text("今日あと せいかい \(max(0, limit - todayCorrectCount)) 問")
                     .font(.subheadline)
                     .foregroundStyle(isLimitReached ? .red : .secondary)
             }
@@ -162,13 +162,17 @@ struct HomeView: View {
                 .padding()
                 .foregroundStyle(.white)
                 .background(
-                    (unsolvedQuestions.isEmpty || isLimitReached)
-                    ? Color(.systemGray4)
-                    : Color.accentColor,
+                    isStartDisabled ? Color(.systemGray4) : Color.accentColor,
                     in: RoundedRectangle(cornerRadius: 16)
                 )
         }
-        .disabled(unsolvedQuestions.isEmpty || isLimitReached)
+        .disabled(isStartDisabled)
+    }
+
+    /// 未解答が尽きても QuestionSelector が既解答から補充する（復習）ので、
+    /// 学年に問題が 1 問もない場合と 1日の上限到達時だけ止める。
+    private var isStartDisabled: Bool {
+        gradeQuestions.isEmpty || isLimitReached
     }
 
     private var mistakeButton: some View {

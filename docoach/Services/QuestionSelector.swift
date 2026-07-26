@@ -31,11 +31,29 @@ struct QuestionSelector {
         selected += weakPool.shuffled().prefix(weakCount)
         selected += normalPool.shuffled().prefix(normalCount)
 
-        // プールが足りない場合は補充
+        // 未解答プール内で補充
         if selected.count < count {
             let used = Set(selected.map(\.id))
             let remaining = freshPool.filter { !used.contains($0.id) }.shuffled()
             selected += remaining.prefix(count - selected.count)
+        }
+
+        // 未解答が尽きたら既解答から補充して、セッション長を保つ。
+        // 優先1: 最新ログが不正解の問題（復習価値が高い）／優先2: 最終解答が古い順。
+        if selected.count < count {
+            let used = Set(selected.map(\.id))
+            let latestLog = AnalysisService.latestLogPerQuestion(recentLogs)
+            let reviewPool = gradePool
+                .filter { answeredIDs.contains($0.id) && !used.contains($0.id) }
+                .sorted { lhs, rhs in
+                    let l = latestLog[lhs.id]
+                    let r = latestLog[rhs.id]
+                    let lWrong = l.map { !$0.isCorrect } ?? false
+                    let rWrong = r.map { !$0.isCorrect } ?? false
+                    if lWrong != rWrong { return lWrong }
+                    return (l?.answeredAt ?? .distantPast) < (r?.answeredAt ?? .distantPast)
+                }
+            selected += reviewPool.prefix(count - selected.count)
         }
 
         return selected.shuffled()

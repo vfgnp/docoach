@@ -68,6 +68,13 @@ struct AnalysisService {
         }
         return result
     }
+
+    /// 指定日に「正解した」ログの件数。1日の上限判定に使う。
+    /// 誤答・やり直しの試行は数えない（解答試行回数ではなく正解数で数える方針）。
+    static func correctCount(in logs: [AnswerLog], on date: Date) -> Int {
+        let cal = Calendar.current
+        return logs.filter { $0.isCorrect && cal.isDate($0.answeredAt, inSameDayAs: date) }.count
+    }
 }
 
 private extension Array where Element == Int {
