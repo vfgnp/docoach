@@ -33,41 +33,35 @@ struct QuizSessionView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            Group {
-                switch phase {
-                case .quiz, .retry:
-                    if let q = current {
-                        AnswerView(question: q, grade: appState.selectedGrade) { chosen in
-                            submitAnswer(question: q, chosen: chosen)
-                        }
-                        .id("\(phase)-\(currentIndex)")
-                    } else {
-                        Color.clear.onAppear { onPhaseComplete() }
-                    }
+        ZStack {
+            Kids.screenBackground.ignoresSafeArea()
 
-                case .mistakeReview:
-                    MistakeReviewView(
-                        wrongCount: wrongQuestions.count,
-                        onRetry: startRetry
-                    )
-
-                case .complete:
-                    CompleteView(onDismiss: { dismiss() })
-                }
-            }
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarLeading) {
-                    Button("終了") { dismiss() }
-                }
-                ToolbarItem(placement: .principal) {
-                    if current != nil {
-                        Text("\(currentIndex + 1) / \(currentQuestions.count)")
-                            .font(.headline)
-                            .monospacedDigit()
+            switch phase {
+            case .quiz, .retry:
+                if let q = current {
+                    AnswerView(
+                        question: q,
+                        grade: appState.selectedGrade,
+                        index: currentIndex,
+                        total: currentQuestions.count,
+                        onClose: { dismiss() }
+                    ) { chosen in
+                        submitAnswer(question: q, chosen: chosen)
                     }
+                    .id("\(phase)-\(currentIndex)")
+                } else {
+                    Color.clear.onAppear { onPhaseComplete() }
                 }
+
+            case .mistakeReview:
+                MistakeReviewView(wrongCount: wrongQuestions.count, onRetry: startRetry)
+
+            case .complete:
+                CompleteView(
+                    correctCount: sessionLogs.filter(\.isCorrect).count,
+                    streak: AnalysisService.streak(in: sessionLogs),
+                    onDismiss: { dismiss() }
+                )
             }
         }
     }
@@ -99,10 +93,9 @@ struct QuizSessionView: View {
             let answeredWrong = sessionLogs
                 .filter { !$0.isCorrect }
                 .compactMap { $0.question }
-            // 重複を除く（同じ問題が複数ログにある場合はなし、quizフェーズでは1問1回）
             wrongQuestions = answeredWrong
             if wrongQuestions.isEmpty {
-                dismiss()
+                phase = .complete
             } else {
                 phase = .mistakeReview
             }
@@ -110,10 +103,7 @@ struct QuizSessionView: View {
         case .retry:
             phase = .complete
 
-        case .mistakeReview:
-            break
-
-        case .complete:
+        case .mistakeReview, .complete:
             break
         }
     }
@@ -126,140 +116,195 @@ struct QuizSessionView: View {
     }
 }
 
-private struct CompleteView: View {
+// MARK: - ぜんぶできたよ！
+
+struct CompleteView: View {
+    let correctCount: Int
+    let streak: Int
     let onDismiss: () -> Void
-    @State private var scale: CGFloat = 0.5
-    @State private var opacity: Double = 0
+
+    @State private var appeared = false
 
     var body: some View {
-        VStack(spacing: 32) {
-            Spacer()
+        ZStack {
+            ConfettiView()
 
-            Text("🎉")
-                .font(.system(size: 96))
-                .scaleEffect(scale)
-                .opacity(opacity)
+            VStack(spacing: 0) {
+                Spacer(minLength: 0)
 
-            VStack(spacing: 12) {
+                HStack(spacing: 10) {
+                    Text("⭐").font(.system(size: 44))
+                    Text("⭐").font(.system(size: 60))
+                    Text("⭐").font(.system(size: 44))
+                }
+                .scaleEffect(appeared ? 1 : 0.4)
+                .opacity(appeared ? 1 : 0)
+
+                MascotView(height: 200)
+                    .padding(.top, 8)
+
                 Text("ぜんぶできたよ！")
-                    .font(.largeTitle.bold())
+                    .font(Kids.font(38, .black))
+                    .foregroundStyle(Kids.blue)
+                    .padding(.top, 18)
+
                 Text("よくがんばったね！")
-                    .font(.title3)
-                    .foregroundStyle(.secondary)
-            }
-            .opacity(opacity)
+                    .font(Kids.font(19, .bold))
+                    .foregroundStyle(Kids.textMuted2)
+                    .padding(.top, 6)
 
-            Spacer()
+                HStack(spacing: 14) {
+                    statChip(title: "せいかい", value: "\(correctCount)問", color: Kids.blue)
+                    if streak > 0 {
+                        statChip(title: "れんぞく", value: "\(streak)日 🔥", color: Kids.orange)
+                    }
+                }
+                .padding(.top, 22)
 
-            Button(action: onDismiss) {
-                Text("おわる")
-                    .font(.title3.bold())
-                    .frame(maxWidth: 300)
-                    .padding()
-                    .foregroundStyle(.white)
-                    .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 16))
+                Spacer(minLength: 0)
+
+                KidsBigButton(title: "おわる", palette: .blue, fontSize: 24, action: onDismiss)
+                    .frame(maxWidth: 340)
+                    .padding(.bottom, 34)
             }
-            .padding(.bottom, 48)
+            .padding(40)
         }
         .onAppear {
-            withAnimation(.spring(duration: 0.6, bounce: 0.4)) {
-                scale = 1.0
-                opacity = 1.0
-            }
+            withAnimation(.spring(duration: 0.6, bounce: 0.4)) { appeared = true }
         }
+    }
+
+    private func statChip(title: String, value: String, color: Color) -> some View {
+        VStack(spacing: 2) {
+            Text(title)
+                .font(Kids.font(13, .bold))
+                .foregroundStyle(Kids.textMuted)
+            Text(value)
+                .font(Kids.font(26, .black))
+                .foregroundStyle(color)
+        }
+        .padding(.horizontal, 22)
+        .padding(.vertical, 14)
+        .kidsCard(radius: 18, depth: 5)
     }
 }
 
-private struct MistakeReviewView: View {
-    let wrongCount: Int
-    let onRetry: () -> Void
-
-    var body: some View {
-        VStack(spacing: 0) {
-            // 追いかけっこアニメーション
-            ChaseView()
-                .padding(.top, 32)
-
-            Spacer()
-
-            // 猫キャラクター＋吹き出し
-            HStack(alignment: .top, spacing: 0) {
-                Text("🐱")
-                    .font(.system(size: 72))
-                    .padding(.top, 4)
-
-                // 吹き出し（左向きポインター付き）
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("おしかったね！")
-                        .font(.title3.bold())
-                    Text("\(wrongCount)問、いっしょに\nもう一度やってみよう！")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .lineSpacing(4)
-                }
-                .padding(18)
-                .background(Color(.systemGray5), in: RoundedRectangle(cornerRadius: 16))
-                .overlay(alignment: .topLeading) {
-                    LeftBubblePointer()
-                        .fill(Color(.systemGray5))
-                        .frame(width: 16, height: 22)
-                        .offset(x: -14, y: 14)
-                }
-                .padding(.leading, 18)
-            }
-            .padding(.horizontal, 28)
-
-            Spacer()
-
-            Button(action: onRetry) {
-                Text("といなおす")
-                    .font(.title3.bold())
-                    .frame(maxWidth: 300)
-                    .padding()
-                    .foregroundStyle(.white)
-                    .background(Color.accentColor, in: RoundedRectangle(cornerRadius: 16))
-            }
-            .padding(.bottom, 48)
-        }
+/// 上から降ってくる紙吹雪
+private struct ConfettiView: View {
+    private struct Piece: Identifiable {
+        let id = UUID()
+        let x: Double        // 0...1
+        let color: Color
+        let circle: Bool
+        let size: CGFloat
+        let duration: Double
+        let delay: Double
     }
-}
 
-// 猫がネズミを追いかけるアニメーション
-private struct ChaseView: View {
-    @State private var progress: CGFloat = 0
+    private let pieces: [Piece] = [
+        .init(x: 0.12, color: Color(hex: 0xFF6B6B), circle: false, size: 14, duration: 2.6, delay: 0),
+        .init(x: 0.28, color: Color(hex: 0xFFD23F), circle: true, size: 12, duration: 2.9, delay: 0.4),
+        .init(x: 0.44, color: Color(hex: 0x46D39A), circle: false, size: 16, duration: 2.4, delay: 0.2),
+        .init(x: 0.62, color: Color(hex: 0x5CB0FF), circle: true, size: 12, duration: 3.1, delay: 0.6),
+        .init(x: 0.78, color: Color(hex: 0x9B7BF0), circle: false, size: 14, duration: 2.7, delay: 0.1),
+        .init(x: 0.90, color: Color(hex: 0xFF9E3C), circle: true, size: 12, duration: 2.5, delay: 0.5),
+    ]
+
+    @State private var falling = false
 
     var body: some View {
         GeometryReader { geo in
-            let span = geo.size.width + 220
-            let catX  = span * progress - 160
-            let mouseX = catX + 72
-
-            ZStack(alignment: .leading) {
-                Text("🐭")
-                    .font(.system(size: 36))
-                    .offset(x: mouseX)
-                Text("🐱")
-                    .font(.system(size: 48))
-                    .offset(x: catX)
+            ZStack(alignment: .top) {
+                ForEach(pieces) { piece in
+                    Group {
+                        if piece.circle {
+                            Circle().fill(piece.color)
+                        } else {
+                            RoundedRectangle(cornerRadius: 3).fill(piece.color)
+                        }
+                    }
+                    .frame(width: piece.size, height: piece.size)
+                    .position(x: piece.x * geo.size.width, y: falling ? geo.size.height + 40 : -30)
+                    .rotationEffect(.degrees(falling ? 560 : 0))
+                    .animation(
+                        .linear(duration: piece.duration).repeatForever(autoreverses: false).delay(piece.delay),
+                        value: falling
+                    )
+                }
             }
         }
-        .frame(height: 56)
-        .clipped()
-        .onAppear {
-            withAnimation(.linear(duration: 2.6).repeatForever(autoreverses: false)) {
-                progress = 1
-            }
-        }
+        .allowsHitTesting(false)
+        .onAppear { falling = true }
     }
 }
 
-// 左向き吹き出しポインター
-private struct LeftBubblePointer: Shape {
+// MARK: - おしかったね！
+
+struct MistakeReviewView: View {
+    let wrongCount: Int
+    let onRetry: () -> Void
+
+    @State private var chase = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // 追いかけっこ
+            GeometryReader { geo in
+                let span = geo.size.width + 140
+                ZStack(alignment: .leading) {
+                    Text("🐾").font(.system(size: 40))
+                        .offset(x: chase ? span : -70)
+                    Text("🐭").font(.system(size: 34))
+                        .offset(x: chase ? span + 60 : -10)
+                }
+                .animation(.linear(duration: 2.6).repeatForever(autoreverses: false), value: chase)
+            }
+            .frame(height: 64)
+            .clipped()
+            .padding(.top, 36)
+
+            MascotView(height: 180).padding(.top, 14)
+
+            VStack(spacing: 8) {
+                Text("おしかったね！")
+                    .font(Kids.font(24, .black))
+                    .foregroundStyle(Kids.orange)
+                Text("\(wrongCount)問、いっしょに\nもう一度やってみよう！")
+                    .font(Kids.font(19, .bold))
+                    .foregroundStyle(Color(hex: 0x6B5E52))
+                    .multilineTextAlignment(.center)
+                    .lineSpacing(6)
+            }
+            .padding(.horizontal, 26)
+            .padding(.vertical, 22)
+            .frame(maxWidth: 420)
+            .kidsCard(radius: 24, depth: 7)
+            .overlay(alignment: .top) {
+                Triangle()
+                    .fill(Kids.card)
+                    .frame(width: 24, height: 16)
+                    .offset(y: -14)
+            }
+            .padding(.top, 22)
+
+            Spacer(minLength: 0)
+
+            KidsBigButton(title: "といなおす！", palette: .blue, fontSize: 26, action: onRetry)
+                .frame(maxWidth: 420)
+        }
+        .padding(.horizontal, 32)
+        .padding(.bottom, 40)
+        .onAppear { chase = true }
+    }
+}
+
+/// 吹き出しのしっぽ
+private struct Triangle: Shape {
     func path(in rect: CGRect) -> Path {
         var p = Path()
-        p.move(to: CGPoint(x: rect.minX, y: rect.midY))
-        p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        p.move(to: CGPoint(x: rect.midX, y: rect.minY))
         p.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+        p.addLine(to: CGPoint(x: rect.minX, y: rect.maxY))
         p.closeSubpath()
         return p
     }
