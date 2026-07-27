@@ -1,5 +1,6 @@
 #if DEBUG
 import SwiftUI
+import SwiftData
 
 /// スクリーンショット検証用の入口。製品ビルドには入らない。
 ///
@@ -20,6 +21,8 @@ enum DebugScreen: String {
 struct DebugScreenGallery: View {
     let screen: DebugScreen
     @State private var isPresented = true
+    @Environment(\.modelContext) private var modelContext
+    @Query private var existingLogs: [AnswerLog]
 
     private var sampleQuestion: Question {
         Question(
@@ -65,6 +68,7 @@ struct DebugScreenGallery: View {
 
             case .dashboard:
                 DashboardView()
+                    .onAppear(perform: seedSampleLogsIfNeeded)
 
             case .mascot:
                 VStack(spacing: 28) {
@@ -74,6 +78,38 @@ struct DebugScreenGallery: View {
                 }
             }
         }
+    }
+
+    /// dashboard 画面のスクリーンショット用に、空の状態ではなく数字が入った状態を見せる。
+    /// ログが1件もない（撮影用にまっさらなシミュレーターの）ときだけ実データを流し込む。
+    private func seedSampleLogsIfNeeded() {
+        guard existingLogs.isEmpty else { return }
+        // DebugScreenGallery は RootView（普段 SeedService.seedIfNeeded を呼ぶ場所）を経由しないので、
+        // dashboard 用のダミーログを入れる前に自分でタグ・問題を投入する。
+        try? SeedService.seedIfNeeded(context: modelContext)
+        var descriptor = FetchDescriptor<Question>(predicate: #Predicate { $0.grade <= 4 })
+        descriptor.fetchLimit = 40
+        guard let pool = try? modelContext.fetch(descriptor), pool.count >= 10 else { return }
+
+        let calendar = Calendar.current
+        let now = Date.now
+        var qIndex = 0
+
+        for dayOffset in stride(from: 6, through: 0, by: -1) {
+            guard let day = calendar.date(byAdding: .day, value: -dayOffset, to: now) else { continue }
+            let answersToday = Int.random(in: 3...5)
+            for a in 0..<answersToday {
+                let question = pool[qIndex % pool.count]
+                let isLastOfDay = a == answersToday - 1
+                let isWeakGroup = qIndex % 3 == 0
+                let isCorrect = isLastOfDay ? true : (isWeakGroup ? Double.random(in: 0...1) < 0.35 : Double.random(in: 0...1) < 0.9)
+                let hour = min(15 + a, 20)
+                let answeredAt = calendar.date(bySettingHour: hour, minute: Int.random(in: 0...59), second: 0, of: day) ?? day
+                modelContext.insert(AnswerLog(question: question, isCorrect: isCorrect, timeSec: Int.random(in: 18...55), answeredAt: answeredAt))
+                qIndex += 1
+            }
+        }
+        try? modelContext.save()
     }
 }
 #endif
